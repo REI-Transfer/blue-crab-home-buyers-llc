@@ -390,7 +390,7 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   const handleOptionSelect = (field: keyof SurveyData, value: string) => {
     setSurveyData({ ...surveyData, [field]: value })
 
-    if (field === "propertyType" && disqualifiedPropertyTypes.includes(value)) {
+    if (field === "propertyType" && (disqualifiedPropertyTypes.includes(value) || value === "condo-townhouse")) {
       setTimeout(() => { setDisqualifyReason("propertyType"); setIsDisqualified(true) }, 300)
       return
     }
@@ -400,6 +400,10 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
     }
     if (field === "isLegalOwner" && value === "no") {
       setTimeout(() => { setDisqualifyReason("notOwner"); setIsDisqualified(true) }, 300)
+      return
+    }
+    if (field === "ownershipLength" && (value === "less-than-3" || value === "3-to-5")) {
+      setTimeout(() => { setDisqualifyReason("ownership"); setIsDisqualified(true) }, 300)
       return
     }
     // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is
@@ -453,7 +457,7 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       propertyType: {
         title: "We're Unable to Assist",
         message: "Unfortunately, we're not able to make an offer on this type of property at this time.",
-        detail: "We primarily purchase single-family homes, multi-family properties, and condos/townhouses. If you have a different property you'd like to sell, feel free to reach out.",
+        detail: "We primarily purchase single-family and multi-family homes. If you have a different property you'd like to sell, feel free to reach out.",
       },
       outOfArea: {
         title: "Outside Our Service Area",
@@ -464,6 +468,11 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
         title: "Just Browsing?",
         message: "It sounds like you're gathering information right now rather than looking to sell.",
         detail: "When you're ready to sell, come back and we'll get you a fair cash offer. Feel free to call us any time if your situation changes.",
+      },
+      ownership: {
+        title: "We're Unable to Assist",
+        message: "At this time we work with homeowners who have owned their property for at least 5 years.",
+        detail: "This helps us make the strongest possible offer. If your situation changes, or you believe there is an exception, feel free to give us a call.",
       },
     }
     const msg = disqualifyMessages[disqualifyReason] || disqualifyMessages.notOwner
