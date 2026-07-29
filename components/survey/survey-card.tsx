@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Home, ArrowRight, ArrowLeft, Check, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { captureTrackingData, getIPAddress } from "@/lib/tracking"
+import { captureTrackingData, getIPAddress, readGfSid } from "@/lib/tracking"
 import { Input } from "@/components/ui/input"
 import { AddressAutocomplete, type AddressDetails, type ServiceArea } from "./address-autocomplete"
 
@@ -328,6 +328,7 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           meta_event_id: eventId,
           meta_event_name: qualified ? 'Lead' : 'LeadLowIntent',
           meta_value: qualified ? score * 25 : 0,
+          gf_sid: readGfSid(),
           ...trackingRef.current,
         }
         // Fire weighted Meta Pixel event (browser-side; CAPI is a separate later phase)
