@@ -407,6 +407,13 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       setTimeout(() => { setDisqualifyReason("ownership"); setIsDisqualified(true) }, 300)
       return
     }
+    // Excellent, move-in-ready homes hard-disqualify — block screen, lead never
+    // submitted (no CRM, no Meta, no GoFunnel). The rule depends only on the
+    // condition field, so re-selecting "excellent" after back-nav re-blocks.
+    if (field === "condition" && value === "excellent") {
+      setTimeout(() => { setDisqualifyReason("excellentCondition"); setIsDisqualified(true) }, 300)
+      return
+    }
     // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is
     // worth" hard-disqualifies — block screen, lead never submitted. The id only
     // exists in REASON_OPTIONS_V2, so this branch is inert for the legacy list.
@@ -474,6 +481,11 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
         title: "We're Unable to Assist",
         message: "At this time we work with homeowners who have owned their property for at least 5 years.",
         detail: "This helps us make the strongest possible offer. If your situation changes, or you believe there is an exception, feel free to give us a call.",
+      },
+      excellentCondition: {
+        title: "This May Not Be the Right Fit",
+        message: "Based on your answers, your home sounds like it's in great shape. For a move-in-ready property like yours, listing with a traditional agent will usually get you a higher price than a cash offer.",
+        detail: "We work best with homeowners who need to sell quickly or whose property needs some work, so we're likely not the best fit right now. Thanks for your time.",
       },
     }
     const msg = disqualifyMessages[disqualifyReason] || disqualifyMessages.notOwner

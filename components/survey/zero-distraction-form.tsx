@@ -87,6 +87,7 @@ type FormState = {
 const DQ_REASONS = {
   notOwner: "We work directly with property owners, so we're not able to make an offer in this case.",
   listed: "Your home is currently listed on the market, so we can't make an offer right now. Once it's off-market, we'd be glad to take a look.",
+  excellentCondition: "Based on your answers, your home sounds like it's in great shape. For a move-in-ready property like yours, listing with a traditional agent will usually get you a higher price than a cash offer.",
   exploring: "It sounds like you're just gathering information right now. When you're ready to sell, come back and we'll get you a cash offer.",
   noReason: "It sounds like you're just gathering information right now. When you're ready to sell, come back and we'll get you a cash offer.",
 } as const
@@ -95,6 +96,7 @@ type DqKey = keyof typeof DQ_REASONS
 function checkHardDq(key: keyof FormState, value: string): DqKey | null {
   if (key === "whoAreYou" && (value === "agent" || value === "wholesaler" || value === "other")) return "notOwner"
   if (key === "listedOnMarket" && value === "yes") return "listed"
+  if (key === "condition" && value === "excellent") return "excellentCondition"
   if (key === "timeline" && value === "exploring") return "exploring"
   // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is worth"
   // hard-disqualifies. The id only exists in REASON_OPTIONS_V2, so this is inert
