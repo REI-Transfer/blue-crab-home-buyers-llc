@@ -407,13 +407,6 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       setTimeout(() => { setDisqualifyReason("ownership"); setIsDisqualified(true) }, 300)
       return
     }
-    // Excellent, move-in-ready homes hard-disqualify — block screen, lead never
-    // submitted (no CRM, no Meta, no GoFunnel). The rule depends only on the
-    // condition field, so re-selecting "excellent" after back-nav re-blocks.
-    if (field === "condition" && value === "excellent") {
-      setTimeout(() => { setDisqualifyReason("excellentCondition"); setIsDisqualified(true) }, 300)
-      return
-    }
     // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is
     // worth" hard-disqualifies — block screen, lead never submitted. The id only
     // exists in REASON_OPTIONS_V2, so this branch is inert for the legacy list.
