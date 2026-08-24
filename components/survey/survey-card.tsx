@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Home, ArrowRight, ArrowLeft, Check, XCircle } from "lucide-react"
+import { Home, ArrowRight, ArrowLeft, ArrowDown, Check, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { captureTrackingData, getIPAddress, readGfSid } from "@/lib/tracking"
 import { Input } from "@/components/ui/input"
@@ -11,13 +11,11 @@ interface SurveyData {
   address: string
   propertyType: string
   isLegalOwner: string
+  ownershipLength: string
   listedOnMarket: string
   timeline: string
   condition: string
   reason: string
-  ownershipLength: string
-  firstName: string
-  lastName: string
   name: string
   email: string
   phone: string
@@ -38,12 +36,27 @@ const LEGAL_OWNER_OPTIONS = [
   { id: "no", label: "No, I am not" },
 ]
 
-const LISTED_OPTIONS = [
-  { id: "not-listed", label: "No, it is not listed" },
-  { id: "listed-realtor", label: "Yes, listed with a realtor" },
-  { id: "listed-fsbo", label: "Yes, listed for sale by owner" },
+const OWNERSHIP_LENGTH_OPTIONS = [
+  { id: "1-3-years", label: "Within the last 3 years" },
+  { id: "3-5-years", label: "3 to 5 years ago" },
+  { id: "5-10-years", label: "5 to 10 years ago" },
+  { id: "10-plus-years", label: "More than 10 years ago" },
+  { id: "inherited", label: "I recently inherited it" },
 ]
 
+// "No, never" and "Yes, but expired or cancelled" proceed; only "Yes, active now"
+// and "Not sure" hard-disqualify (see handleOptionSelect / disqualifyReasonFor).
+// "not-listed" is kept as the id for "No, never" so isQualifiedForMeta's
+// okListed === 'not-listed' gate is unchanged.
+const LISTED_OPTIONS = [
+  { id: "not-listed", label: "No, never" },
+  { id: "listed-active", label: "Yes, active now" },
+  { id: "listed-expired", label: "Yes, but expired or cancelled" },
+  { id: "not-sure", label: "Not sure" },
+]
+
+// Blue Crab timeline step (re-added 2026-08). Ids/labels carried from Blue Crab's
+// prior survey-card; SCORE_TIMELINE below scores them.
 const TIMELINE_OPTIONS = [
   { id: "asap", label: "ASAP (Within 7 days)" },
   { id: "2-weeks", label: "Within 2 weeks" },
@@ -53,11 +66,11 @@ const TIMELINE_OPTIONS = [
 ]
 
 const CONDITION_OPTIONS = [
-  { id: "excellent", label: "Excellent - Move-in ready" },
-  { id: "good", label: "Good - Minor repairs needed" },
-  { id: "fair", label: "Fair - Needs some work" },
-  { id: "poor", label: "Poor - Major repairs needed" },
-  { id: "distressed", label: "Distressed - Significant issues" },
+  { id: "excellent", label: "Excellent - Move-in ready", desc: "Recently updated. Could list tomorrow with nothing to fix." },
+  { id: "good", label: "Good - Minor repairs needed", desc: "Well kept, but dated kitchen, baths, or floors. Nothing broken." },
+  { id: "fair", label: "Fair - Needs some work", desc: "Dated throughout, plus wear and repairs I've been putting off." },
+  { id: "poor", label: "Poor - Major repairs needed", desc: "Major systems need work. Roof, HVAC, plumbing, electrical, or foundation." },
+  { id: "distressed", label: "Distressed - Significant issues", desc: "Not livable as-is. Significant damage, or it's been sitting vacant." },
 ]
 
 const REASON_OPTIONS = [
@@ -65,87 +78,87 @@ const REASON_OPTIONS = [
   { id: "behind-payments", label: "Behind on payments" },
   { id: "inherited", label: "Inherited property" },
   { id: "divorce", label: "Divorce or separation" },
-  { id: "relocation", label: "Job relocation" },
-  { id: "downsizing", label: "Downsizing" },
-  { id: "repairs", label: "Can't afford repairs" },
-  { id: "other", label: "Other" },
-]
-
-// William's v2 reason list — rendered only when MOTIVATION_V2 is on (new clients).
-// The final option ("no-reason") is a hard-disqualifier: selecting it shows the
-// block screen and the lead is never submitted (see handleOptionSelect).
-const REASON_OPTIONS_V2 = [
-  { id: "foreclosure", label: "Facing foreclosure" },
-  { id: "behind-payments", label: "Behind on payments" },
-  { id: "inherited", label: "Inherited property" },
-  { id: "divorce", label: "Divorce or separation" },
   { id: "repairs", label: "Can't afford repairs" },
   { id: "vacant", label: "Vacant property I need to sell" },
   { id: "urgent-financial", label: "Urgent financial situation not listed above" },
-  { id: "personal", label: "Personal situation not listed above" },
-  { id: "no-reason", label: "No reason / seeing what my house is worth" },
+  { id: "life-event", label: "Personal situation not listed above" },
+  { id: "none-of-above", label: "No reason / seeing what my house is worth" },
 ]
 
-const OWNERSHIP_LENGTH_OPTIONS = [
-  { id: "less-than-3", label: "Less than 3 years" },
-  { id: "3-to-5", label: "3 to 5 years" },
-  { id: "5-to-10", label: "5 to 10 years" },
-  { id: "10-plus", label: "10+ years" },
-]
+const VALID_AREA_CODES = new Set(["201","202","203","205","206","207","208","209","210","212","213","214","215","216","217","218","219","220","223","224","225","228","229","231","234","239","240","248","251","252","253","254","256","260","262","267","269","270","272","276","279","281","301","302","303","304","305","307","308","309","310","312","313","314","315","316","317","318","319","320","321","323","325","326","327","330","331","332","334","336","337","339","340","341","346","347","351","352","360","361","364","380","385","386","401","402","404","405","406","407","408","409","410","412","413","414","415","417","419","423","424","425","430","432","434","435","440","442","443","445","447","448","458","463","469","470","475","478","479","480","484","501","502","503","504","505","507","508","509","510","512","513","515","516","517","518","520","530","531","534","539","540","541","551","559","561","562","563","564","567","570","571","573","574","575","580","585","586","601","602","603","605","606","607","608","609","610","612","614","615","616","617","618","619","620","623","626","628","629","630","631","636","641","646","650","651","657","659","660","661","662","667","669","678","680","681","682","689","701","702","703","704","706","707","708","712","713","714","715","716","717","718","719","720","724","725","726","727","728","731","732","734","737","740","743","747","754","757","760","762","763","765","769","770","772","773","774","775","779","781","785","786","801","802","803","804","805","806","808","810","812","813","814","815","816","817","818","820","828","830","831","832","838","843","845","847","848","850","854","856","857","858","859","860","862","863","864","865","870","872","878","901","903","904","906","907","908","909","910","912","913","914","915","916","917","918","919","920","925","928","929","930","931","934","936","937","938","940","941","943","947","949","951","952","954","956","959","970","971","972","973","978","979","980","984","985","989"])
 
-// ─── Lead scoring (browser-side) ───────────────────────────────────────
-// Standard scoring matrix used across all REI Transfer client surveys.
-// Applied automatically when this template is cloned for a new client.
-const SCORE_TIMELINE: Record<string, number> = {
-  'asap': 3, '2-weeks': 2, '30-days': 1, '60-days': 0, 'flexible': 0,
+const DISPOSABLE_DOMAINS = new Set(["mailinator.com","guerrillamail.com","tempmail.com","throwaway.email","yopmail.com","sharklasers.com","guerrillamail.info","grr.la","guerrillamail.biz","guerrillamail.de","guerrillamail.net","guerrillamail.org","spam4.me","trashmail.com","trashmail.me","trashmail.net","mytemp.email","mohmal.com","tempail.com","dispostable.com","maildrop.cc","10minutemail.com","temp-mail.org","fakeinbox.com","mailnesia.com","getnada.com","emailondeck.com","33mail.com","harakirimail.com","jetable.org","meltmail.com","mailcatch.com","tempinbox.com","spamgourmet.com","mailexpire.com","incognitomail.org","getairmail.com","mailnull.com","safeemail.xyz","tempmailo.com","burnermail.io"])
+
+const BLOCKED_WORDS = new Set(["fuck","shit","ass","damn","bitch","bastard","dick","cock","pussy","cunt","whore","slut","fag","nigger","nigga","retard","penis","vagina","anus","dildo","porn","xxx","viagra","cialis","casino","bitcoin","crypto","forex","mlm","scam","spam","test123","asdf","qwerty","aaaaaa","zzzzzz","abcdef","123456"])
+
+// ============================================================
+// LEAD SCORING + QUALIFICATION (REI Transfer playbook v1, 2026-04-27)
+// Score matrix is identical across all REI Transfer clients.
+// ============================================================
+const SCORE_OWNERSHIP: Record<string, number> = {
+  '10-plus-years': 3, '5-10-years': 1, '3-5-years': 0, '1-3-years': 0,
+  // inherited: exempt from ownership hard-DQs; placeholder score 3 pending William's confirm.
+  'inherited': 3,
 }
 const SCORE_REASON: Record<string, number> = {
-  'foreclosure': 3, 'behind-payments': 3,
-  'inherited': 2, 'repairs': 2,
-  'other': 1,
-  'relocation': 0, 'divorce': 0, 'downsizing': 0,
-  // v2 list IDs (MOTIVATION_V2). 'no-reason' DQs pre-submit so its weight is moot.
-  'urgent-financial': 3, 'vacant': 2, 'personal': 1, 'no-reason': 0,
+  'foreclosure': 3, 'behind-payments': 3, 'urgent-financial': 3,
+  'inherited': 2, 'repairs': 2, 'vacant': 2, 'divorce': 2,
+  'life-event': 1,
+  'none-of-above': 0,
 }
 const SCORE_CONDITION: Record<string, number> = {
   'poor': 1, 'distressed': 1,
   'fair': 0, 'good': 0, 'excellent': 0,
 }
-function calculateLeadScore(d: SurveyData): number {
-  const t = SCORE_TIMELINE[d.timeline] ?? 0
-  const r = SCORE_REASON[d.reason] ?? 0
-  const c = SCORE_CONDITION[d.condition] ?? 0
-  return Math.min(10, t + r + c)
+// Blue Crab timeline scoring (carried exactly from Blue Crab's prior survey-card).
+const SCORE_TIMELINE: Record<string, number> = {
+  'asap': 3, '2-weeks': 2, '30-days': 1, '60-days': 0, 'flexible': 0,
 }
-function isQualifiedForMeta(d: SurveyData): boolean {
+
+interface SurveyDataLike {
+  propertyType: string;
+  isLegalOwner: string;
+  ownershipLength: string;
+  listedOnMarket: string;
+  timeline: string;
+  condition: string;
+  reason: string;
+}
+
+function calculateLeadScore(d: SurveyDataLike): number {
+  return (SCORE_OWNERSHIP[d.ownershipLength] || 0)
+       + (SCORE_REASON[d.reason] || 0)
+       + (SCORE_CONDITION[d.condition] || 0)
+       + (SCORE_TIMELINE[d.timeline] || 0)
+}
+function isQualifiedForMeta(d: SurveyDataLike): boolean {
   const okType = d.propertyType === 'single-family' || d.propertyType === 'multi-family'
   const okListed = d.listedOnMarket === 'not-listed'
   const okOwner = d.isLegalOwner !== 'no'
+  // Reason is the intent gate (2026-06-24): "no reason / just seeing what it's
+  // worth" is hard-blocked before submit, so anyone who reaches here is motivated.
+  const okReason = d.reason !== 'none-of-above'
+  // Excellent / move-in-ready does NOT fire a qualified Lead — it soft-DQs:
+  // qualified=false -> fires LeadLowIntent and STILL posts (no block screen).
   const okCondition = d.condition !== 'excellent'
-  return okType && okListed && okOwner && okCondition
+  return okType && okListed && okOwner && okReason && okCondition
+}
+function disqualifyReasonFor(d: SurveyDataLike): string | null {
+  if (d.propertyType === 'condo-townhouse') return 'condo_townhouse'
+  if (d.propertyType === 'mobile-home') return 'mobile_home'
+  if (d.propertyType === 'land') return 'vacant_land'
+  if (d.propertyType === 'other') return 'other_property_type'
+  if (d.listedOnMarket === 'listed-active' || d.listedOnMarket === 'not-sure' || d.listedOnMarket === 'listed-expired') return 'listed_on_market'
+  if (d.isLegalOwner === 'no') return 'not_legal_owner'
+  if (d.condition === 'excellent') return 'excellent_condition'
+  return null
 }
 function leadQuality(score: number): 'premium' | 'standard' | 'low' {
   if (score >= 6) return 'premium'
-  if (score >= 2) return 'standard'
+  if (score >= 3) return 'standard'
   return 'low'
 }
-function disqualifyReasonFor(d: SurveyData): string {
-  if (d.propertyType !== 'single-family' && d.propertyType !== 'multi-family') return 'property_type'
-  if (d.listedOnMarket !== 'not-listed') return 'listed'
-  if (d.isLegalOwner === 'no') return 'not_owner'
-  if (d.condition === 'excellent') return 'excellent_condition'
-  return 'unknown'
-}
-// ──────────────────────────────────────────────────────────────────────
 
-// Valid US area codes
-// Disposable email domains
-const DISPOSABLE_DOMAINS = new Set(["mailinator.com","guerrillamail.com","tempmail.com","throwaway.email","yopmail.com","sharklasers.com","guerrillamail.info","grr.la","guerrillamail.biz","guerrillamail.de","guerrillamail.net","guerrillamail.org","spam4.me","trashmail.com","trashmail.me","trashmail.net","mytemp.email","mohmal.com","tempail.com","dispostable.com","maildrop.cc","10minutemail.com","temp-mail.org","fakeinbox.com","mailnesia.com","getnada.com","emailondeck.com","33mail.com","harakirimail.com","jetable.org","meltmail.com","mailcatch.com","tempinbox.com","spamgourmet.com","mailexpire.com","incognitomail.org","getairmail.com","mailnull.com","safeemail.xyz","tempmailo.com","burnermail.io"])
-
-// Profanity / spam word list
-const BLOCKED_WORDS = new Set(["fuck","shit","ass","damn","bitch","bastard","dick","cock","pussy","cunt","whore","slut","fag","nigger","nigga","retard","penis","vagina","anus","dildo","porn","xxx","viagra","cialis","casino","bitcoin","crypto","forex","mlm","scam","spam","test123","asdf","qwerty","aaaaaa","zzzzzz","abcdef","123456"])
-
-// Format phone as (XXX) XXX-XXXX
 function formatPhoneNumber(value: string): string {
   let digits = value.replace(/\D/g, "")
   if (digits.startsWith("1")) digits = digits.slice(1)
@@ -156,13 +169,11 @@ function formatPhoneNumber(value: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
 }
 
-// Validate US phone number
 function validatePhone(phone: string): { valid: boolean; msg: string } {
   const digits = phone.replace(/\D/g, "").replace(/^1/, "")
   if (digits.length !== 10) return { valid: false, msg: "Please enter a valid 10-digit US phone number." }
   const area = digits.slice(0, 3)
-  // NANP structural rules: area code can't start with 0 or 1
-  if (area[0] === "0" || area[0] === "1") return { valid: false, msg: `Area code (${area}) doesn't appear to be valid.` }
+  if (!VALID_AREA_CODES.has(area)) return { valid: false, msg: `Area code (${area}) doesn't appear to be valid.` }
   if (/^(\d)\1{9}$/.test(digits)) return { valid: false, msg: "Please enter a real phone number." }
   if (["1234567890", "0123456789", "9876543210"].includes(digits)) return { valid: false, msg: "Please enter a real phone number." }
   const exchange = digits.slice(3, 6)
@@ -171,7 +182,6 @@ function validatePhone(phone: string): { valid: boolean; msg: string } {
   return { valid: true, msg: "" }
 }
 
-// Validate email
 function validateEmail(email: string): { valid: boolean; msg: string } {
   if (!email || email.trim() === "") return { valid: false, msg: "Email is required." }
   const e = email.trim().toLowerCase()
@@ -186,17 +196,9 @@ function validateEmail(email: string): { valid: boolean; msg: string } {
   for (const part of emailParts) {
     if (BLOCKED_WORDS.has(part)) return { valid: false, msg: "Please enter a valid email address." }
   }
-  const localPart = e.split("@")[0]
-  const domainName = domain.split(".")[0]
-  for (const word of BLOCKED_WORDS) {
-    if (word.length >= 4 && (localPart.includes(word) || domainName.includes(word))) {
-      return { valid: false, msg: "Please enter a valid email address." }
-    }
-  }
   return { valid: true, msg: "" }
 }
 
-// Validate name
 function validateName(name: string): { valid: boolean; msg: string } {
   const trimmed = name.trim()
   if (!trimmed) return { valid: false, msg: "Name is required." }
@@ -205,7 +207,7 @@ function validateName(name: string): { valid: boolean; msg: string } {
   for (const word of words) {
     if (BLOCKED_WORDS.has(word)) return { valid: false, msg: "Please enter your real name." }
   }
-  if (/(.)\\1{4,}/.test(trimmed)) return { valid: false, msg: "Please enter your real name." }
+  if (/(.)\1{4,}/.test(trimmed)) return { valid: false, msg: "Please enter your real name." }
   if (/^\d+$/.test(trimmed)) return { valid: false, msg: "Please enter your real name, not a number." }
   return { valid: true, msg: "" }
 }
@@ -215,31 +217,48 @@ interface SurveyCardProps {
   phoneHref?: string
   serviceAreas?: ServiceArea[]
   disqualifiedPropertyTypes?: string[]
-  // Additive seed props for the advertorial sticky-bar -> popup flow.
-  // When an address is captured in the sticky bar, we open the modal pre-seeded
-  // at step 2 so the user does not have to re-enter the address they already gave.
-  // These props do NOT change the form's submit, webhook, or redirect behavior.
-  initialAddress?: string
-  initialStep?: number
-  // When true (MOTIVATION_V2), render William's v2 reason list incl. the
-  // "no-reason" hard-disqualifier. Passed from the server page (config.motivationV2)
-  // — this client component must NOT import lib/config.
+  // Accepted for compatibility with Blue Crab's page; the reason list here is
+  // fixed, so this flag is currently unused.
   motivationV2?: boolean
+  initialAddress?: string
+  /**
+   * Display order of the questions, by question id. Position in the array is the
+   * step the visitor sees; the value is which question renders there. Omitting it
+   * keeps the original order, so every existing page is unaffected.
+   */
+  stepOrder?: number[]
 }
 
-export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "8000000000", serviceAreas = [], disqualifiedPropertyTypes = ["mobile-home", "land", "other"], initialAddress, initialStep, motivationV2 = false }: SurveyCardProps) {
-  const [step, setStep] = useState(initialStep && initialStep >= 2 && initialStep <= 8 ? initialStep : 1)
+// Question ids: 1 address, 2 propertyType, 3 isLegalOwner, 4 ownershipLength,
+// 5 listedOnMarket, 6 condition, 7 reason, 8 contact, 9 timeline.
+// Timeline (9) is wired into the default order right before reason (7).
+const DEFAULT_STEP_ORDER = [1, 2, 3, 4, 5, 6, 9, 7, 8]
+const ADDRESS_QUESTION = 1
+
+export function SurveyCard({
+  phoneDisplay = "(800) 000-0000",
+  phoneHref = "8000000000",
+  serviceAreas = [],
+  disqualifiedPropertyTypes = ["mobile-home", "land", "other"],
+  motivationV2 = false, // eslint-disable-line @typescript-eslint/no-unused-vars
+  initialAddress,
+  stepOrder = DEFAULT_STEP_ORDER,
+}: SurveyCardProps = {}) {
+  // `step` is the POSITION on screen. `q` is which question sits there.
+  // With the default order the two are identical.
+  const addressPosition = stepOrder.indexOf(ADDRESS_QUESTION) + 1
+  const [step, setStep] = useState(
+    initialAddress && addressPosition === 1 ? 2 : 1
+  )
   const [surveyData, setSurveyData] = useState<SurveyData>({
-    address: initialAddress ?? "",
+    address: initialAddress || "",
     propertyType: "",
     isLegalOwner: "",
+    ownershipLength: "",
     listedOnMarket: "",
     timeline: "",
     condition: "",
     reason: "",
-    ownershipLength: "",
-    firstName: "",
-    lastName: "",
     name: "",
     email: "",
     phone: "",
@@ -247,7 +266,7 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isDisqualified, setIsDisqualified] = useState(false)
   const [disqualifyReason, setDisqualifyReason] = useState("")
-  const [addressVerified, setAddressVerified] = useState(false)
+  const [addressVerified, setAddressVerified] = useState(!!initialAddress)
   const [addressOutOfArea, setAddressOutOfArea] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
@@ -258,26 +277,22 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   }, [])
   const [honeypot, setHoneypot] = useState("")
 
-  const totalSteps = 9
+  const totalSteps = stepOrder.length
+  const q = stepOrder[step - 1] ?? stepOrder[0]
 
   const handleNext = async () => {
     // Block out-of-area addresses on Continue with a disqualify screen
-    if (step === 1 && addressOutOfArea) {
+    if (q === ADDRESS_QUESTION && addressOutOfArea) {
       setDisqualifyReason("outOfArea")
       setIsDisqualified(true)
       return
     }
     if (step === totalSteps) {
       const errors: {[key: string]: string} = {}
-
-      const firstCheck = validateName(surveyData.firstName)
-      if (!firstCheck.valid) errors.firstName = firstCheck.msg
-      const lastCheck = validateName(surveyData.lastName)
-      if (!lastCheck.valid) errors.lastName = lastCheck.msg
-
+      const nameCheck = validateName(surveyData.name)
+      if (!nameCheck.valid) errors.name = nameCheck.msg
       const emailCheck = validateEmail(surveyData.email)
       if (!emailCheck.valid) errors.email = emailCheck.msg
-
       const phoneCheck = validatePhone(surveyData.phone)
       if (!phoneCheck.valid) errors.phone = phoneCheck.msg
 
@@ -287,40 +302,54 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       }
 
       const timeSpent = Date.now() - formStartTime.current
-      if (timeSpent < 3000) {
-        setIsSubmitted(true)
-        return
-      }
-
-      if (honeypot) {
-        setIsSubmitted(true)
-        return
-      }
+      if (timeSpent < 3000) { setIsSubmitted(true); return }
+      if (honeypot) { setIsSubmitted(true); return }
 
       setIsSubmitting(true)
 
+      // REI Transfer playbook: lead scoring + conditional Meta event firing.
+      const qualified = isQualifiedForMeta(surveyData)
+      const score = calculateLeadScore(surveyData)
+      const quality = leadQuality(score)
+      const dqReason = qualified ? null : disqualifyReasonFor(surveyData)
+      // Stable event id for browser+CAPI dedup
+      const eventId = 'eho_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10)
+      // Handler expects both a single `name` and split first/last (2026-08).
+      const nameParts = surveyData.name.trim().split(/\s+/)
+      const firstName = nameParts[0] || ""
+      const lastName = nameParts.slice(1).join(" ")
+
       try {
-        const fullName = `${surveyData.firstName.trim()} ${surveyData.lastName.trim()}`.trim()
-        const score = calculateLeadScore(surveyData)
-        const quality = leadQuality(score)
-        const qualified = isQualifiedForMeta(surveyData)
-        const dqReason = qualified ? null : disqualifyReasonFor(surveyData)
-        const eventId = `lead-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+        // Conditional Meta Pixel firing — Lead only for qualified, value-bid by score
+        if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).fbq) {
+          const fbq = (window as unknown as { fbq: (...args: unknown[]) => void }).fbq
+          if (qualified) {
+            fbq("track", "Lead", {
+              value: score * 25,
+              currency: "USD",
+              content_name: "Blue Crab Home Buyers Survey",
+              content_category: "real_estate",
+              lead_score: score,
+              lead_quality: quality,
+            }, { eventID: eventId })
+          } else {
+            fbq("trackCustom", "LeadLowIntent", {
+              content_name: "Blue Crab Home Buyers Survey",
+              content_category: "real_estate",
+              disqualify_reason: dqReason,
+              lead_score: score,
+            }, { eventID: eventId })
+          }
+        }
+
         const payload = {
-          firstName: surveyData.firstName.trim(),
-          lastName: surveyData.lastName.trim(),
-          name: fullName,
-          email: surveyData.email,
-          phone: surveyData.phone,
-          address: surveyData.address,
-          propertyType: surveyData.propertyType,
-          isLegalOwner: surveyData.isLegalOwner,
-          condition: surveyData.condition,
-          timeline: surveyData.timeline,
-          reason: surveyData.reason,
-          ownershipLength: surveyData.ownershipLength,
-          source: 'Survey Form',
+          ...surveyData,
+          firstName,
+          lastName,
+          ...trackingRef.current,
+          source: 'Blue Crab Home Buyers, LLC - Survey',
           submittedAt: new Date().toISOString(),
+          // Scoring + Meta coordination (additive — n8n ignores unknown keys)
           qualified,
           lead_score: score,
           lead_quality: quality,
@@ -329,33 +358,17 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           meta_event_name: qualified ? 'Lead' : 'LeadLowIntent',
           meta_value: qualified ? score * 25 : 0,
           gf_sid: readGfSid(),
-          ...trackingRef.current,
         }
-        // Fire weighted Meta Pixel event (browser-side; CAPI is a separate later phase)
-        if (typeof window !== 'undefined' && (window as { fbq?: (...args: unknown[]) => void }).fbq) {
-          const fbq = (window as { fbq: (...args: unknown[]) => void }).fbq
-          // content_name uses the brand from config so each cloned client gets the right label automatically
-          const brandName = (typeof window !== 'undefined' && (window as unknown as { __NEXT_DATA__?: { runtimeConfig?: { companyName?: string } } }).__NEXT_DATA__?.runtimeConfig?.companyName) || 'REI Survey'
-          if (qualified) {
-            fbq('track', 'Lead', {
-              value: score * 25, currency: 'USD',
-              content_name: `${brandName} Survey`, content_category: 'real_estate',
-              lead_score: score, lead_quality: quality,
-            }, { eventID: eventId })
-          } else {
-            fbq('trackCustom', 'LeadLowIntent', {
-              content_name: `${brandName} Survey`, content_category: 'real_estate',
-              disqualify_reason: dqReason, lead_score: score,
-            }, { eventID: eventId })
-          }
-        }
-        await fetch('/api/submit', {
+        const res = await fetch('/api/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
+        if (!res.ok) {
+          console.error('Submit failed:', res.status, await res.text())
+        }
       } catch (e) {
-        // Continue to thank-you even if webhook fails
+        console.error('Submit error:', e)
       }
 
       window.location.href = '/thank-you'
@@ -369,21 +382,16 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   }
 
   const canProceed = () => {
-    switch (step) {
+    switch (q) {
       case 1: return surveyData.address.trim().length > 0 && addressVerified
       case 2: return surveyData.propertyType !== ""
       case 3: return surveyData.isLegalOwner !== ""
-      case 4: return surveyData.listedOnMarket !== ""
-      case 5: return surveyData.timeline !== ""
+      case 4: return surveyData.ownershipLength !== ""
+      case 5: return surveyData.listedOnMarket !== ""
       case 6: return surveyData.condition !== ""
       case 7: return surveyData.reason !== ""
-      case 8: return surveyData.ownershipLength !== ""
-      case 9: return (
-        surveyData.firstName.trim().length > 0 &&
-        surveyData.lastName.trim().length > 0 &&
-        surveyData.email.trim().length > 0 &&
-        surveyData.phone.trim().length > 0
-      )
+      case 8: return surveyData.name.trim().length > 0 && surveyData.email.trim().length > 0 && surveyData.phone.trim().length > 0
+      case 9: return surveyData.timeline !== ""
       default: return false
     }
   }
@@ -391,11 +399,15 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   const handleOptionSelect = (field: keyof SurveyData, value: string) => {
     setSurveyData({ ...surveyData, [field]: value })
 
+    // Hard disqualifiers (REI Transfer playbook). Property-type DQ is env-driven via
+    // disqualifiedPropertyTypes; condo-townhouse is always disqualified.
     if (field === "propertyType" && (disqualifiedPropertyTypes.includes(value) || value === "condo-townhouse")) {
       setTimeout(() => { setDisqualifyReason("propertyType"); setIsDisqualified(true) }, 300)
       return
     }
-    if (field === "listedOnMarket" && ["listed-realtor", "listed-fsbo"].includes(value)) {
+    // Listing DQ: "Yes, active now", "Not sure", and "Yes, but expired or
+    // cancelled" all hard-disqualify. Only "No, never" (not-listed) passes.
+    if (field === "listedOnMarket" && ["listed-active", "not-sure", "listed-expired"].includes(value)) {
       setTimeout(() => { setDisqualifyReason("listed"); setIsDisqualified(true) }, 300)
       return
     }
@@ -403,14 +415,18 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       setTimeout(() => { setDisqualifyReason("notOwner"); setIsDisqualified(true) }, 300)
       return
     }
-    if (field === "ownershipLength" && (value === "less-than-3" || value === "3-to-5")) {
-      setTimeout(() => { setDisqualifyReason("ownership"); setIsDisqualified(true) }, 300)
+    if (field === "ownershipLength" && value === "1-3-years") {
+      setTimeout(() => { setDisqualifyReason("noEquity"); setIsDisqualified(true) }, 300)
       return
     }
-    // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is
-    // worth" hard-disqualifies — block screen, lead never submitted. The id only
-    // exists in REASON_OPTIONS_V2, so this branch is inert for the legacy list.
-    if (field === "reason" && value === "no-reason") {
+    // Owned 3 to 5 years hard-disqualifies — block screen, lead never submitted.
+    if (field === "ownershipLength" && value === "3-5-years") {
+      setTimeout(() => { setDisqualifyReason("shortOwnership"); setIsDisqualified(true) }, 300)
+      return
+    }
+    // NOTE: "excellent" condition is a SOFT-DQ (no block). It flows through, fails
+    // isQualifiedForMeta -> fires LeadLowIntent, and STILL posts.
+    if (field === "reason" && value === "none-of-above") {
       setTimeout(() => { setDisqualifyReason("noReason"); setIsDisqualified(true) }, 300)
       return
     }
@@ -418,28 +434,35 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
     setTimeout(() => { if (step < totalSteps) setStep(step + 1) }, 300)
   }
 
-  const handleAddressSelect = (address: string, _details: AddressDetails) => {
+  const handleAddressSelect = (address: string, details: AddressDetails) => {
     setSurveyData({ ...surveyData, address })
     setAddressVerified(true)
     setAddressOutOfArea(false)
-    setTimeout(() => { setStep(2) }, 300)
+    setTimeout(() => { setStep((prev) => Math.min(prev + 1, totalSteps)) }, 300)
   }
 
   const renderOptionButton = (
-    option: { id: string; label: string },
+    option: { id: string; label: string; desc?: string },
     selectedValue: string,
     field: keyof SurveyData
   ) => (
     <button
       key={option.id}
       onClick={() => handleOptionSelect(field, option.id)}
-      className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all ${
+      className={`w-full rounded-xl border px-4 py-3 md:px-5 md:py-4 text-left text-base md:text-lg font-medium transition-all ${
         selectedValue === option.id
-          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-gray-900"
-          : "border-gray-200 bg-white text-gray-700 hover:border-[var(--accent)]/50 hover:bg-gray-50"
+          ? "border-[#1d283b] bg-[#1d283b]/10 text-[#0F1D2F]"
+          : "border-[#E2E8F0] bg-white text-[#0F1D2F] hover:border-[#1d283b]/50 hover:bg-[#F5F7FA]"
       }`}
     >
-      {option.label}
+      {option.desc ? (
+        <>
+          <span className="block">{option.label}</span>
+          <span className="mt-0.5 block text-sm font-normal text-[#5A6B7D]">{option.desc}</span>
+        </>
+      ) : (
+        option.label
+      )}
     </button>
   )
 
@@ -458,45 +481,45 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       propertyType: {
         title: "We're Unable to Assist",
         message: "Unfortunately, we're not able to make an offer on this type of property at this time.",
-        detail: "We primarily purchase single-family and multi-family homes. If you have a different property you'd like to sell, feel free to reach out.",
+        detail: "We primarily purchase single-family homes and multi-family properties. If you have a different property you'd like to sell, feel free to reach out.",
       },
       outOfArea: {
         title: "Outside Our Service Area",
         message: "Unfortunately, we don't currently buy properties in that area.",
         detail: "We only serve select markets at this time. If you believe your property is within our coverage area, please try a different address or give us a call.",
       },
+      noEquity: {
+        title: "We're Unable to Make an Offer",
+        message: "Unfortunately, properties owned for less than 3 years typically don't have enough equity for us to make a fair cash offer.",
+        detail: "If your situation changes or you'd like to discuss your options, feel free to give us a call. We're always happy to help.",
+      },
       noReason: {
-        title: "Just Browsing?",
-        message: "It sounds like you're gathering information right now rather than looking to sell.",
-        detail: "When you're ready to sell, come back and we'll get you a fair cash offer. Feel free to call us any time if your situation changes.",
+        title: "We're Not the Right Fit",
+        message: "We work with homeowners who have a specific situation that calls for a fast, as-is cash sale. Without one, you'll typically get more money listing on the open market.",
+        detail: "If your situation changes, feel free to come back any time. We'd be glad to help.",
       },
-      ownership: {
-        title: "We're Unable to Assist",
-        message: "At this time we work with homeowners who have owned their property for at least 5 years.",
-        detail: "This helps us make the strongest possible offer. If your situation changes, or you believe there is an exception, feel free to give us a call.",
-      },
-      excellentCondition: {
+      shortOwnership: {
         title: "This May Not Be the Right Fit",
-        message: "Based on your answers, your home sounds like it's in great shape. For a move-in-ready property like yours, listing with a traditional agent will usually get you a higher price than a cash offer.",
-        detail: "We work best with homeowners who need to sell quickly or whose property needs some work, so we're likely not the best fit right now. Thanks for your time.",
+        message: "Based on your answers, we may not be the best fit for your situation right now.",
+        detail: "We work best with homeowners who've owned their property a bit longer. If your situation changes, feel free to come back any time — we'd be glad to help.",
       },
     }
     const msg = disqualifyMessages[disqualifyReason] || disqualifyMessages.notOwner
 
     return (
-      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+      <div className="w-full max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-lg">
         <div className="flex flex-col items-center gap-5 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-            <XCircle className="h-7 w-7 text-red-500" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+            <XCircle className="h-8 w-8 text-red-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">{msg.title}</h2>
-            <p className="mt-2 text-gray-600">{msg.message}</p>
-            <p className="mt-4 text-sm text-gray-500">{msg.detail}</p>
+            <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">{msg.title}</h2>
+            <p className="mt-2 text-[#5A6B7D] text-lg">{msg.message}</p>
+            <p className="mt-4 text-base text-[#5A6B7D]">{msg.detail}</p>
           </div>
           <a
             href={`tel:${phoneHref}`}
-            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3 text-white hover:opacity-90 transition-opacity"
+            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#1d283b] px-8 py-4 text-lg text-white hover:bg-[#141b28] transition-colors"
           >
             Call Us: {phoneDisplay}
           </a>
@@ -507,15 +530,27 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
 
   if (isSubmitted) {
     return (
-      <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+      <div className="w-full max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-lg">
         <div className="flex flex-col items-center gap-5 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#22c55e]/10">
-            <Check className="h-7 w-7 text-[#22c55e]" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
+            <Check className="h-8 w-8 text-green-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">Thank You, {surveyData.firstName}!</h2>
-            <p className="mt-2 text-gray-600">We've received your information and will be in touch shortly.</p>
-            <p className="mt-4 text-sm text-gray-500">One of our team members will call you within 24 hours.</p>
+            <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">Thank You, {surveyData.name}!</h2>
+            <p className="mt-2 text-[#5A6B7D] text-lg">
+              We've received your information and will be in touch shortly with your cash offer.
+            </p>
+            <p className="mt-4 text-base text-[#5A6B7D]">
+              One of our team members will call you within 24 hours to discuss your property.
+            </p>
+          </div>
+          <div className="mt-2 rounded-xl bg-[#F5F7FA] p-4 text-left w-full">
+            <h3 className="text-base font-medium text-[#0F1D2F] mb-2">Your Submission Summary:</h3>
+            <div className="text-base text-[#5A6B7D] space-y-1">
+              <p><span className="font-medium">Property:</span> {surveyData.address}</p>
+              <p><span className="font-medium">Email:</span> {surveyData.email}</p>
+              <p><span className="font-medium">Phone:</span> {surveyData.phone}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -523,31 +558,35 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
   }
 
   return (
-    <div className="w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
-      <div className="flex flex-col gap-5">
+    <div className="w-full max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white p-4 md:p-6 shadow-lg">
+      <div className="flex flex-col gap-3 md:gap-5">
         {/* Progress indicator */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Home className="h-5 w-5 text-[var(--accent)]" />
-            <span className="text-sm text-gray-600">Step {step} of {totalSteps}</span>
+            <Home className="h-5 w-5 text-[#1d283b]" />
+            <span className="text-base text-[#5A6B7D]">Step {step} of {totalSteps}</span>
           </div>
           <div className="flex gap-1">
             {Array.from({ length: totalSteps }).map((_, i) => (
               <div
                 key={i}
                 className={`h-1.5 w-6 rounded-full transition-colors ${
-                  i < step ? "bg-[var(--accent)]" : "bg-gray-200"
+                  i < step ? "bg-[#1d283b]" : "bg-gray-200"
                 }`}
               />
             ))}
           </div>
         </div>
 
-        {step === 1 && (
+        {/* Address */}
+        {q === 1 && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">What's your property address?</h2>
-              <p className="mt-1 text-sm text-gray-500">Start typing and select your address from the dropdown.</p>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">What&apos;s your property address?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">Start typing and select your address from the dropdown.</p>
+            </div>
+            <div className="flex justify-center -mb-2">
+              <ArrowDown className="h-6 w-6 text-[#1d283b] animate-bounce" />
             </div>
             <AddressAutocomplete
               value={surveyData.address}
@@ -557,15 +596,23 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
               serviceAreas={serviceAreas}
               placeholder="Start typing your address..."
             />
-
+            <Button
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="w-full h-14 bg-[#1d283b] text-white text-lg font-semibold rounded-xl hover:bg-[#141b28] disabled:opacity-40 transition-all shadow-md hover:shadow-lg"
+            >
+              Get My Cash Offer
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         )}
 
-        {step === 2 && (
+        {/* Property Type */}
+        {q === 2 && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">What type of property is it?</h2>
-              <p className="mt-1 text-sm text-gray-500">Select the option that best describes your property.</p>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">What type of property is it?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">Select the option that best describes your property.</p>
             </div>
             <div className="flex flex-col gap-2">
               {PROPERTY_TYPE_OPTIONS.map((option) => renderOptionButton(option, surveyData.propertyType, "propertyType"))}
@@ -573,11 +620,12 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           </div>
         )}
 
-        {step === 3 && (
+        {/* Legal Owner */}
+        {q === 3 && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Are you the legal homeowner?</h2>
-              <p className="mt-1 text-sm text-gray-500">This helps us understand who we'll be working with.</p>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">Are you the legal homeowner?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">This helps us understand who we&apos;ll be working with.</p>
             </div>
             <div className="flex flex-col gap-2">
               {LEGAL_OWNER_OPTIONS.map((option) => renderOptionButton(option, surveyData.isLegalOwner, "isLegalOwner"))}
@@ -585,59 +633,12 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           </div>
         )}
 
-        {step === 4 && (
+        {/* Ownership Length */}
+        {q === 4 && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Is the property currently listed on the market?</h2>
-              <p className="mt-1 text-sm text-gray-500">Let us know if the property is currently for sale.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              {LISTED_OPTIONS.map((option) => renderOptionButton(option, surveyData.listedOnMarket, "listedOnMarket"))}
-            </div>
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">How fast are you looking to sell?</h2>
-              <p className="mt-1 text-sm text-gray-500">Select your ideal timeline for closing.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              {TIMELINE_OPTIONS.map((option) => renderOptionButton(option, surveyData.timeline, "timeline"))}
-            </div>
-          </div>
-        )}
-
-        {step === 6 && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">What condition is the property in?</h2>
-              <p className="mt-1 text-sm text-gray-500">Be honest - we buy houses in any condition.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              {CONDITION_OPTIONS.map((option) => renderOptionButton(option, surveyData.condition, "condition"))}
-            </div>
-          </div>
-        )}
-
-        {step === 7 && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">What's your reason for selling?</h2>
-              <p className="mt-1 text-sm text-gray-500">This helps us understand your situation better.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {(motivationV2 ? REASON_OPTIONS_V2 : REASON_OPTIONS).map((option) => renderOptionButton(option, surveyData.reason, "reason"))}
-            </div>
-          </div>
-        )}
-
-        {step === 8 && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">How long have you owned the home?</h2>
-              <p className="mt-1 text-sm text-gray-500">This helps us tailor your offer.</p>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">When did you purchase the home?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">This helps us estimate your equity position.</p>
             </div>
             <div className="flex flex-col gap-2">
               {OWNERSHIP_LENGTH_OPTIONS.map((option) => renderOptionButton(option, surveyData.ownershipLength, "ownershipLength"))}
@@ -645,67 +646,96 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           </div>
         )}
 
-        {step === 9 && (
+        {/* Listed on Market */}
+        {q === 5 && (
           <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">How can we reach you?</h2>
-              <p className="mt-1 text-sm text-gray-500">We'll use this to send you your cash offer.</p>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">Is the property currently listed?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">Let us know if the property is currently for sale.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {LISTED_OPTIONS.map((option) => renderOptionButton(option, surveyData.listedOnMarket, "listedOnMarket"))}
+            </div>
+          </div>
+        )}
+
+        {/* Condition */}
+        {q === 6 && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">What condition is the property in?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">Be honest. We buy houses in any condition.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {CONDITION_OPTIONS.map((option) => renderOptionButton(option, surveyData.condition, "condition"))}
+            </div>
+          </div>
+        )}
+
+        {/* Timeline */}
+        {q === 9 && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">How soon are you looking to sell?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">Select your ideal timeline for closing.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {TIMELINE_OPTIONS.map((option) => renderOptionButton(option, surveyData.timeline, "timeline"))}
+            </div>
+          </div>
+        )}
+
+        {/* Reason */}
+        {q === 7 && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">What&apos;s your reason for selling?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">This helps us understand your situation better.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {REASON_OPTIONS.map((option) => renderOptionButton(option, surveyData.reason, "reason"))}
+            </div>
+          </div>
+        )}
+
+        {/* Contact Information */}
+        {q === 8 && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold text-[#0F1D2F]">Almost done. How can we reach you?</h2>
+              <p className="mt-1 text-base text-[#5A6B7D]">We&apos;ll use this to send you your cash offer within 24 hours.</p>
             </div>
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Input
-                    placeholder="First name"
-                    value={surveyData.firstName}
-                    onChange={(e) => {
-                      setSurveyData({ ...surveyData, firstName: e.target.value })
-                      setValidationErrors({ ...validationErrors, firstName: "" })
-                    }}
-                    className={`h-12 rounded-xl border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-[var(--accent)]/20 ${validationErrors.firstName ? "border-red-500" : ""}`}
-                  />
-                  {validationErrors.firstName && <p className="mt-1 text-xs text-red-500">{validationErrors.firstName}</p>}
-                </div>
-                <div>
-                  <Input
-                    placeholder="Last name"
-                    value={surveyData.lastName}
-                    onChange={(e) => {
-                      setSurveyData({ ...surveyData, lastName: e.target.value })
-                      setValidationErrors({ ...validationErrors, lastName: "" })
-                    }}
-                    className={`h-12 rounded-xl border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-[var(--accent)]/20 ${validationErrors.lastName ? "border-red-500" : ""}`}
-                  />
-                  {validationErrors.lastName && <p className="mt-1 text-xs text-red-500">{validationErrors.lastName}</p>}
-                </div>
+              <div>
+                <Input
+                  placeholder="Your full name"
+                  value={surveyData.name}
+                  onChange={(e) => { setSurveyData({ ...surveyData, name: e.target.value }); setValidationErrors({ ...validationErrors, name: "" }) }}
+                  className={`h-14 text-lg rounded-xl border-[#E2E8F0] bg-white text-[#0F1D2F] placeholder:text-[#94A3B8] focus:border-[#1d283b] focus:ring-[#1d283b]/20 ${validationErrors.name ? "border-red-500" : ""}`}
+                />
+                {validationErrors.name && <p className="mt-1 text-xs text-red-500">{validationErrors.name}</p>}
               </div>
               <div>
                 <Input
                   type="email"
                   placeholder="Email address"
                   value={surveyData.email}
-                  onChange={(e) => {
-                    setSurveyData({ ...surveyData, email: e.target.value })
-                    setValidationErrors({ ...validationErrors, email: "" })
-                  }}
-                  className={`h-12 rounded-xl border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-[var(--accent)]/20 ${validationErrors.email ? "border-red-500" : ""}`}
+                  onChange={(e) => { setSurveyData({ ...surveyData, email: e.target.value }); setValidationErrors({ ...validationErrors, email: "" }) }}
+                  className={`h-14 text-lg rounded-xl border-[#E2E8F0] bg-white text-[#0F1D2F] placeholder:text-[#94A3B8] focus:border-[#1d283b] focus:ring-[#1d283b]/20 ${validationErrors.email ? "border-red-500" : ""}`}
                 />
                 {validationErrors.email && <p className="mt-1 text-xs text-red-500">{validationErrors.email}</p>}
               </div>
               <div>
                 <Input
                   type="tel"
-                  placeholder="(555) 123-4567"
+                  placeholder="(813) 555-0000"
                   value={surveyData.phone}
-                  onChange={(e) => {
-                    setSurveyData({ ...surveyData, phone: formatPhoneNumber(e.target.value) })
-                    setValidationErrors({ ...validationErrors, phone: "" })
-                  }}
+                  onChange={(e) => { setSurveyData({ ...surveyData, phone: formatPhoneNumber(e.target.value) }); setValidationErrors({ ...validationErrors, phone: "" }) }}
                   maxLength={14}
-                  className={`h-12 rounded-xl border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:border-[var(--accent)] focus:ring-[var(--accent)]/20 ${validationErrors.phone ? "border-red-500" : ""}`}
+                  className={`h-14 text-lg rounded-xl border-[#E2E8F0] bg-white text-[#0F1D2F] placeholder:text-[#94A3B8] focus:border-[#1d283b] focus:ring-[#1d283b]/20 ${validationErrors.phone ? "border-red-500" : ""}`}
                 />
                 {validationErrors.phone && <p className="mt-1 text-xs text-red-500">{validationErrors.phone}</p>}
               </div>
-              {/* Honeypot field */}
               <input
                 type="text"
                 name="website"
@@ -719,35 +749,37 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           </div>
         )}
 
-        {/* Navigation */}
+        {/* Navigation buttons — hidden on step 1 since the big CTA handles it */}
+        {step !== 1 && (
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={handleBack}
             disabled={step === 1}
-            className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-0"
+            className="text-[#5A6B7D] hover:text-[#0F1D2F] hover:bg-[#F5F7FA] text-base disabled:opacity-0"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 h-5 w-5" />
             Back
           </Button>
           <Button
             onClick={handleNext}
             disabled={!canProceed() || isSubmitting}
-            className="bg-[var(--accent)] text-white hover:bg-[var(--accent)] disabled:opacity-50"
+            className="bg-[#1d283b] text-white text-lg px-8 py-3 hover:bg-[#141b28] disabled:opacity-50"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                 Submitting...
               </span>
             ) : (
               <>
                 {step === totalSteps ? "Get My Cash Offer" : "Continue"}
-                {step !== totalSteps && <ArrowRight className="ml-2 h-4 w-4" />}
+                {step !== totalSteps && <ArrowRight className="ml-2 h-5 w-5" />}
               </>
             )}
           </Button>
         </div>
+        )}
       </div>
     </div>
   )
