@@ -819,7 +819,7 @@ export function SurveyCard({
                 <div>
                   <Input
                     type="tel"
-                    placeholder="(404) 000-0000"
+                    placeholder="Phone number"
                     autoComplete="tel"
                     value={surveyData.phone}
                     onChange={(e) => { setSurveyData({ ...surveyData, phone: formatPhoneNumber(e.target.value) }); setValidationErrors({ ...validationErrors, phone: "" }) }}

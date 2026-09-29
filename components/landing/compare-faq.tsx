@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { marketPhrase, type Brand } from "@/lib/brand";
+import type { Brand } from "@/lib/brand";
 import { OrangeCta } from "./cta";
 
 /*
@@ -37,7 +37,7 @@ export function CompareSection({ brand }: { brand: Brand }) {
           A Simple, Honest Way To Sell Your House
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-base leading-relaxed text-[#3b4a5c] md:text-lg">
-          {brand.displayName} buys houses directly from homeowners in {marketPhrase(brand)}. No listing, no showings,
+          {brand.displayName} buys houses directly from homeowners. No listing, no showings,
           no repairs. Just a fair cash offer and a closing date you choose.
         </p>
 
@@ -85,7 +85,6 @@ export function CompareSection({ brand }: { brand: Brand }) {
 
 function buildFaqs(brand: Brand) {
   const company = brand.displayName;
-  const market = marketPhrase(brand);
   return [
     {
       q: "How does the cash offer process work?",
@@ -109,7 +108,7 @@ function buildFaqs(brand: Brand) {
     },
     {
       q: "What areas do you buy in?",
-      a: `We buy houses in ${market}. Enter your address to get started.`,
+      a: "We buy houses in many areas across the country. Enter your address to see if we can make you an offer.",
     },
   ];
 }

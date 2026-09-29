@@ -76,7 +76,8 @@ export function buildBrand(): Brand {
   }
 }
 
-/** The market phrase for copy, e.g. "Metro Atlanta"; "your area" when MARKET_NAME is empty. */
+/** The market phrase for copy; "your area" when MARKET_NAME is empty. Not used on the landing page:
+ *  Blue Crab buys in more than one market, so the page names no place. */
 export function marketPhrase(brand: Brand): string {
   return brand.marketName ? brand.marketName : "your area"
 }

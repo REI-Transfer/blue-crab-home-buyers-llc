@@ -1,7 +1,7 @@
 "use client";
 
 import { Home, Wrench, CalendarCheck, DollarSign, Phone } from "lucide-react";
-import { marketPhrase, type Brand } from "@/lib/brand";
+import type { Brand } from "@/lib/brand";
 import { OrangeCta, openOfferModal } from "./cta";
 import { OwnerCaption } from "./hero";
 
@@ -46,17 +46,17 @@ export function StatsBand({ brand }: { brand: Brand }) {
   );
 }
 
-/* ---------- "We Buy Houses In Metro Atlanta" ---------- */
+/* ---------- "We Buy Houses In Any Condition" ----------
+   No place names anywhere on this page: Blue Crab buys in more than one market (William 2026-09-29). */
 export function WeBuySection({ brand }: { brand: Brand }) {
-  const market = marketPhrase(brand);
   return (
     <section className="bg-white py-16 md:py-24">
       <div className="mx-auto max-w-4xl px-5 text-center md:px-6">
         <h2 className="font-display text-5xl leading-none text-[color:var(--bc-navy)] md:text-7xl">
-          We Buy Houses In {market}
+          We Buy Houses In Any Condition
         </h2>
         <p className="font-display mx-auto mt-5 max-w-3xl text-xl leading-snug text-[color:var(--bc-navy)] md:text-2xl">
-          Sell your house in {market} to us and skip the entire listing process. No fees, no commissions,
+          Sell your house to us and skip the entire listing process. No fees, no commissions,
           no repairs to make. Getting an offer is 100% free.
         </p>
         <p className="mx-auto mt-6 max-w-3xl text-left text-base leading-relaxed text-[#3b4a5c] md:text-center md:text-lg">
@@ -74,7 +74,6 @@ export function WeBuySection({ brand }: { brand: Brand }) {
 
 /* ---------- "TRUSTED" team band: Herbert's real photo over a room ---------- */
 export function TeamBand({ brand }: { brand: Brand }) {
-  const market = marketPhrase(brand);
   const photo = brand.teamPhotoUrl || brand.ownerCutoutUrl;
   const ownerAlt = brand.ownerName ? `${brand.ownerName}, ${brand.displayName}` : brand.displayName;
   return (
@@ -103,7 +102,7 @@ export function TeamBand({ brand }: { brand: Brand }) {
             Trusted
           </span>
           <h2 className="font-display relative -mt-10 text-4xl leading-[1.05] text-white md:-mt-16 md:text-5xl lg:-mt-20">
-            {brand.displayName} Buys Houses In {market} For A Fair Cash Price
+            {brand.displayName} Buys Houses For A Fair Cash Price
           </h2>
           <p className="relative mt-5 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">
             We are {brand.displayName}
@@ -232,7 +231,6 @@ export function FinalCta() {
 
 /* ---------- Footer ---------- */
 export function SiteFooter({ brand }: { brand: Brand }) {
-  const market = marketPhrase(brand);
   return (
     <footer className="bg-[color:var(--bc-navy)] text-white">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 md:grid-cols-3 md:px-6">
@@ -245,7 +243,7 @@ export function SiteFooter({ brand }: { brand: Brand }) {
             <span className="font-display text-3xl">{brand.displayName}</span>
           )}
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/70">
-            Buying houses for cash in {market}. Fair offers, no repairs, no fees.
+            Buying houses for cash, as-is. Fair offers, no repairs, no fees.
           </p>
         </div>
 

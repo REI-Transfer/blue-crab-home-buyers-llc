@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { SurveyCard } from "@/components/survey/survey-card";
 import { AddressAutocomplete } from "@/components/survey/address-autocomplete";
-import { marketPhrase, type Brand } from "@/lib/brand";
+import type { Brand } from "@/lib/brand";
 
 /** Name line shown over Herbert's photo (hero desktop + phone, team band). */
 export function OwnerCaption({ brand, dark = false, className = "" }: { brand: Brand; dark?: boolean; className?: string }) {
@@ -126,7 +126,7 @@ export function Hero({ brand }: { brand: Brand }) {
                   </button>
                   {outsideAreaError && (
                     <p className="text-center text-sm font-medium" style={{ color: "#dc2626" }}>
-                      Sorry, that address is outside our current buying area. Please enter a property in {marketPhrase(brand)}.
+                      Sorry, that address is outside our current buying area. Please try a different address or give us a call.
                     </p>
                   )}
                   <p className="text-center text-sm text-[#5A6B7D]">
