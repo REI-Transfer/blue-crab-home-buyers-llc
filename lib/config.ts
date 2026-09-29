@@ -15,6 +15,17 @@ const config = {
   // Owner / personalization
   ownerName:       process.env.OWNER_NAME        ?? "",
   headshotUrl:     process.env.HEADSHOT_URL      ?? "",
+  foundersCaption: process.env.FOUNDERS_CAPTION  ?? "",
+
+  // Landing layout (Grumpy Hare style, same as Rivoir). Defaults are Blue Crab's own files
+  // in /public/images, so the page needs no new settings; each can be overridden from Vercel.
+  // Both Herbert images are cut-outs of his real photos (FOUNDERS_PHOTO_URL / HEADSHOT_URL),
+  // background removed only. Never generated people.
+  headerLogoUrl:   process.env.HEADER_LOGO_URL   || "/images/logo-trimmed.webp",  // LOGO_URL trimmed, white -> transparent
+  ownerCutoutUrl:  process.env.OWNER_CUTOUT_URL  || "/images/herbert-hero.webp",  // cut-out of FOUNDERS_PHOTO_URL
+  teamPhotoUrl:    process.env.TEAM_PHOTO_URL    || "/images/herbert-team.webp",  // cut-out of HEADSHOT_URL
+  heroBgUrl:       process.env.HERO_BG_URL       || "/images/hero-house.webp",    // webp of the advertorial's adv-home-exterior.jpg
+  teamBgUrl:       process.env.TEAM_BG_URL       || "/images/team-bg.webp",       // webp of the advertorial's adv-empty-rooms.jpg
 
   // Hero
   headline:        process.env.HEADLINE          ?? "Sell Your House Fast For Cash",
@@ -37,12 +48,15 @@ const config = {
   stat3Label:      process.env.STAT_3_LABEL      ?? "Cash Offer",
 
   // SEO
-  metaTitle:       process.env.META_TITLE        ?? "Sell Your House Fast For Cash",
-  metaDescription: process.env.META_DESCRIPTION  ?? "Get a fair cash offer for your home in 24 hours. No fees, no repairs, no hassle.",
+  // `||` (not `??`): Blue Crab's META_TITLE / META_DESCRIPTION are set but EMPTY, which
+  // left the browser tab with no title.
+  metaTitle:       process.env.META_TITLE        || "Blue Crab Home Buyers | Sell Your House Fast For Cash",
+  metaDescription: process.env.META_DESCRIPTION  || "Get a fair written cash offer for your house in 24 hours. No repairs, no showings, no fees.",
 
   // Footer
-  privacyPolicyUrl: process.env.PRIVACY_POLICY_URL ?? "/privacy",
-  termsUrl:         process.env.TERMS_URL           ?? "/terms",
+  // `||`: both are set but EMPTY on Blue Crab, which made the footer links point nowhere.
+  privacyPolicyUrl: process.env.PRIVACY_POLICY_URL || "/privacy",
+  termsUrl:         process.env.TERMS_URL           || "/terms",
 
   // Survey disqualification — comma-separated property type IDs to hard-disqualify
   disqualifiedPropertyTypes: process.env.DISQUALIFIED_PROPERTY_TYPES ?? "mobile-home,land,other",

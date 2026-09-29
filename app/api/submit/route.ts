@@ -6,7 +6,9 @@ const submissionLog = new Map<string, { count: number; firstSubmit: number }>()
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
   const window = 60 * 60 * 1000 // 1 hour
-  const maxSubmissions = 3
+  // Max 6 per IP per hour: the two-step form sends 2 calls per seller
+  // (lead_stage 'early' + 'complete'), so 6 keeps the old 3-sellers headroom.
+  const maxSubmissions = 6
 
   const entry = submissionLog.get(ip)
   if (!entry) {
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
       || request.headers.get("x-real-ip")
       || "unknown"
 
-    // Rate limit: max 3 submissions per IP per hour
+    // Rate limit: max 6 submissions per IP per hour
     if (isRateLimited(ip)) {
       return NextResponse.json(
         { success: false, error: "Too many submissions. Please try again later." },
@@ -39,6 +41,11 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json()
+    // Two-step form: 'early' (stage 1 contact details), 'complete' (finished survey) or
+    // 'disqualified' (stage-2 hard DQ). Anything else, including a missing value, is
+    // 'complete', so older callers (/v3) keep today's behaviour.
+    const stage: "early" | "complete" | "disqualified" =
+      data.lead_stage === "early" ? "early" : data.lead_stage === "disqualified" ? "disqualified" : "complete"
 
     // Server-side validation
     const phone = (data.phone || "").replace(/\D/g, "").replace(/^1/, "")
@@ -59,8 +66,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Address required" }, { status: 400 })
     }
 
-    // Add server IP to payload
-    const payload = { ...data, server_ip: ip }
+    // Add server IP + normalized lead_stage to payload (n8n branches on lead_stage)
+    const payload = { ...data, server_ip: ip, lead_stage: stage }
 
     const webhookUrl = process.env.WEBHOOK_URL
     if (webhookUrl) {
@@ -72,10 +79,12 @@ export async function POST(request: Request) {
     }
 
     // --- GoFunnel external webhook: forward the lead for gf_sid attribution ---
+    // FINISHED surveys only (William 2026-09-18): no forward for the stage-1 partial or a
+    // stage-2 disqualified seller.
     try {
       const GF_CREDENTIAL_ID = process.env.GOFUNNEL_WEBHOOK_CREDENTIAL_ID || "6c79d63a-a0b6-45e2-b376-66866c22f034"
       const GF_BEARER = process.env.GOFUNNEL_WEBHOOK_SECRET || "1436f0da-c668-4b82-8662-cb4c0f14c810"
-      if (GF_CREDENTIAL_ID && GF_BEARER) {
+      if (stage === "complete" && GF_CREDENTIAL_ID && GF_BEARER) {
         const gfCookie = request.headers.get("cookie") || ""
         const gfMatch = gfCookie.match(/(?:^|; )gf_sid=([^;]*)/)
         const gfSid = (data.gf_sid || (gfMatch ? decodeURIComponent(gfMatch[1]) : "") || "").toString().trim()
@@ -90,6 +99,10 @@ export async function POST(request: Request) {
           sid: gfSid || undefined,
           formId: "blue-crab-home-buyers-llc",
           formTitle: "Blue Crab Home Buyers Survey",
+          // Subject property — the house the seller is selling. Read by GoFunnel's
+          // real-estate property enrichment. NOT an identity field: it never
+          // participates in lead matching. (From PR #7, feat/gofunnel-property-address.)
+          propertyAddress: gfStr(data.address),
           idempotencyKey: gfStr(data.meta_event_id),
           leadQuestions: {
             is_legal_owner: gfStr(data.isLegalOwner),
@@ -132,7 +145,7 @@ export async function POST(request: Request) {
       }
     } catch {}
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, stage })
   } catch {
     return NextResponse.json({ success: false }, { status: 500 })
   }
