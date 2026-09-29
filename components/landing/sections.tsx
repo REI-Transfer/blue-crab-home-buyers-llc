@@ -20,10 +20,11 @@ export function StatsBand({ brand }: { brand: Brand }) {
   if (!stats.length) return null;
 
   return (
-    // Phones: even navy padding above/below, no overlap (Herbert's photo sits right above).
-    // md+: the cards overlap the bottom of the hero like the reference.
-    <section className="relative bg-[color:var(--bc-navy)] py-4 md:pt-0 md:pb-16">
-      <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-3 px-4 md:-mt-20 md:grid-cols-3 md:gap-6 md:px-6">
+    // No overlap with the hero at any width (William 2026-09-29): the cards sit fully inside
+    // the navy band with the same space above and below (28px phone, 48px md+). No negative
+    // margin or translate.
+    <section className="relative bg-[color:var(--bc-navy)] py-7 md:py-12">
+      <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-3 px-4 md:grid-cols-3 md:gap-6 md:px-6">
         {stats.map((s) => (
           <div
             key={s.label}

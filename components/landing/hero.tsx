@@ -79,7 +79,7 @@ export function Hero({ brand }: { brand: Brand }) {
         </p>
 
         <div className="mt-6 grid items-end gap-4 lg:mt-6 lg:grid-cols-[1fr_540px] lg:gap-8">
-          {/* Herbert cut-out, desktop. The caption sits above the strip the stat cards overlap. */}
+          {/* Herbert cut-out, desktop. The caption sits 24px above the hero's bottom edge. */}
           <div className="relative hidden h-full min-h-[460px] lg:block">
             {brand.ownerCutoutUrl && (
               <img
@@ -88,11 +88,11 @@ export function Hero({ brand }: { brand: Brand }) {
                 className="absolute bottom-0 left-4 h-[450px] w-auto max-w-full object-contain object-bottom drop-shadow-xl"
               />
             )}
-            <OwnerCaption brand={brand} className="absolute bottom-24 left-0 min-w-[220px]" />
+            <OwnerCaption brand={brand} className="absolute bottom-6 left-0 min-w-[220px]" />
           </div>
 
           {/* Form card */}
-          <div id="offer-form" className="relative z-10 w-full scroll-mt-24 pb-4 lg:pb-28">
+          <div id="offer-form" className="relative z-10 w-full scroll-mt-24 pb-6 lg:pb-12">
             {!showSurvey ? (
               <div className="mx-auto w-full max-w-[540px] rounded-2xl border-4 border-white/70 bg-white p-5 shadow-2xl md:p-7">
                 <h2 className="font-display text-center text-[1.9rem] leading-none text-[color:var(--bc-navy)] md:text-4xl">
@@ -155,7 +155,7 @@ export function Hero({ brand }: { brand: Brand }) {
         {brand.ownerCutoutUrl && (
           <div className="relative mt-2 flex justify-center lg:hidden">
             <img src={brand.ownerCutoutUrl} alt={ownerAlt} className="block h-[280px] w-auto object-contain object-bottom" />
-            <OwnerCaption brand={brand} className="absolute bottom-3 left-1/2 w-[80%] max-w-[260px] -translate-x-1/2" />
+            <OwnerCaption brand={brand} className="absolute bottom-6 left-1/2 w-[80%] max-w-[260px] -translate-x-1/2" />
           </div>
         )}
       </div>
