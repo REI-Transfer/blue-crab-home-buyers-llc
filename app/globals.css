@@ -124,3 +124,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Landing page (Grumpy Hare layout, ported from Rivoir) */
+.font-display {
+  font-family: var(--font-display), "Bebas Neue", "Oswald", Impact, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+/* Blue Crab brand: navy #1d283b (ACCENT_COLOR) and the logo blue #0a68a8. Orange is kept
+   for CTA buttons only: it is the conversion colour of the reference layout and contrasts
+   with both brand colours. */
+.bc-landing {
+  --bc-navy: #1d283b;
+  --bc-blue: #0a68a8;
+  --bc-orange: #e8672a;
+  --bc-orange-hover: #d4571d;
+  --bc-mist: #eaf0f6;
+}
