@@ -84,7 +84,11 @@ export async function POST(request: Request) {
     try {
       const GF_CREDENTIAL_ID = process.env.GOFUNNEL_WEBHOOK_CREDENTIAL_ID || "6c79d63a-a0b6-45e2-b376-66866c22f034"
       const GF_BEARER = process.env.GOFUNNEL_WEBHOOK_SECRET || "1436f0da-c668-4b82-8662-cb4c0f14c810"
-      if (stage === "complete" && GF_CREDENTIAL_ID && GF_BEARER) {
+      // Phase 1 and the finished survey both go to GoFunnel; a stage-2
+      // disqualified seller does not. The phase-1 post carries
+      // meta_event_name 'LeadEarly', which routes it away from the scored
+      // Lead event in GoFunnel — captured as a lead, fires nothing to Meta.
+      if (stage !== "disqualified" && GF_CREDENTIAL_ID && GF_BEARER) {
         const gfCookie = request.headers.get("cookie") || ""
         const gfMatch = gfCookie.match(/(?:^|; )gf_sid=([^;]*)/)
         const gfSid = (data.gf_sid || (gfMatch ? decodeURIComponent(gfMatch[1]) : "") || "").toString().trim()
